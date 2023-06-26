@@ -13,6 +13,8 @@ using WebPCodec = WebP.Mac.WebPCodec;
 #elif __IOS__
 using UIKit;
 using PImage = UIKit.UIImage;
+using SkiaSharp;
+using SkiaSharp.Views.iOS;
 //using WebPCodec = WebP.Touch.WebPCodec;
 #endif
 
@@ -30,11 +32,19 @@ namespace FFImageLoading.Decoders
 
         public Task<IDecodedImage<PImage>> DecodeAsync(Stream stream, string path, Work.ImageSource source, ImageInformation imageInformation, TaskParameter parameters)
         {
-            //if (_decoder == null)
-            //    _decoder = new WebPCodec();
+			var result = new DecodedImage<PImage>();
 
-            var result = new DecodedImage<PImage>();
-           // result.Image = _decoder.Decode(stream);
+ 			// Quick fix: Use SkiaSharp to decode WebP!
+			using (var codec = SKCodec.Create(stream))
+			using (var bitmap = SKBitmap.Decode(codec))
+			{
+				result.Image = new(bitmap.ToCGImage());
+			}
+	
+			if (result is { Image: null })
+			{
+				throw new($"Failed to decode webp file from path '${path}'");
+			}
 
             var downsampleWidth = parameters.DownSampleSize?.Item1 ?? 0;
             var downsampleHeight = parameters.DownSampleSize?.Item2 ?? 0;
